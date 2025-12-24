@@ -1,4 +1,5 @@
 <?php
+
 /**
  * db.php — CONSUMO PAPEL (dual connections, SAP read-only)
  * - Conexión principal: MySQL (mysqli)
@@ -119,9 +120,9 @@ $conn = $db;
 
 /* Variables @app_* para auditoría (MySQL) */
 $uid_sql = is_null($app_user_id)   ? "NULL" : (string)$app_user_id;
-$un_sql  = is_null($app_user_name) ? "NULL" : ("'".$db->real_escape_string($app_user_name)."'");
-$rut_sql = is_null($app_user_rut)  ? "NULL" : ("'".$db->real_escape_string($app_user_rut)."'");
-$ip_sql  = is_null($app_user_ip)   ? "NULL" : ("'".$db->real_escape_string($app_user_ip)."'");
+$un_sql  = is_null($app_user_name) ? "NULL" : ("'" . $db->real_escape_string($app_user_name) . "'");
+$rut_sql = is_null($app_user_rut)  ? "NULL" : ("'" . $db->real_escape_string($app_user_rut) . "'");
+$ip_sql  = is_null($app_user_ip)   ? "NULL" : ("'" . $db->real_escape_string($app_user_ip) . "'");
 $db->query("SET @app_user_id={$uid_sql}, @app_user_name={$un_sql}, @app_user_rut={$rut_sql}, @app_user_ip={$ip_sql}");
 
 /* ============ CONEXIÓN SECUNDARIA: SQL Server (SAP, RO) ============ */
@@ -129,8 +130,8 @@ $sap = null;
 if ($SAP_ENABLED) {
     // Timeouts bajos + UTF-8 + canal cifrado (confía en certificado interno)
     $dsn = "sqlsrv:Server={$MSSQL_HOST};Database={$MSSQL_DB};"
-         . "TrustServerCertificate=Yes;Encrypt=Yes;"
-         . "LoginTimeout=5;CharacterSet=UTF-8";
+        . "TrustServerCertificate=Yes;Encrypt=Yes;"
+        . "LoginTimeout=5;CharacterSet=UTF-8";
     try {
         $sap = new PDO($dsn, $MSSQL_USER, $MSSQL_PASS, [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -154,11 +155,16 @@ if (!function_exists('db_query')) {
     {
         global $db;
         $stmt = $db->prepare($sql);
-        if ($stmt === false) { return false; }
+        if ($stmt === false) {
+            return false;
+        }
         if ($types !== '' && !empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
-        if (!$stmt->execute()) { $stmt->close(); return false; }
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return false;
+        }
         $result = $stmt->get_result();
         if ($result === false) {
             $ok = ($db->affected_rows >= 0);
@@ -183,7 +189,9 @@ if (!function_exists('db_select')) {
         $res = db_query($sql, $types, $params);
         if ($res === false) return [];
         $rows = [];
-        while ($row = $res->fetch_assoc()) { $rows[] = $row; }
+        while ($row = $res->fetch_assoc()) {
+            $rows[] = $row;
+        }
         $res->free();
         return $rows;
     }
@@ -205,7 +213,10 @@ if (!function_exists('db_exec')) {
         if ($types !== '' && !empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
-        if (!$stmt->execute()) { $stmt->close(); return 0; }
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return 0;
+        }
         $affected = (int)$stmt->affected_rows;
         $stmt->close();
         return max(0, $affected);
@@ -222,7 +233,9 @@ if (!function_exists('sap_select')) {
     function sap_select(string $sql, array $params = []): array
     {
         global $sap;
-        if (!$sap) { return []; }
+        if (!$sap) {
+            return [];
+        }
 
         // Guardia: SOLO se permite SELECT (ignora espacios y comentarios simples)
         $check = ltrim($sql);
@@ -232,7 +245,7 @@ if (!function_exists('sap_select')) {
         }
         if (!preg_match('/^SELECT\b/i', $check)) {
             // Intento de instrucción no permitida.
-            return []; 
+            return [];
         }
 
         $stmt = $sap->prepare($sql);
@@ -240,4 +253,21 @@ if (!function_exists('sap_select')) {
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $rows ?: [];
     }
+}
+// ===============================
+// PDO MySQL (solo para módulos nuevos como Altillo)
+// ===============================
+try {
+    $pdo = new PDO(
+        "mysql:host={$MYSQL_HOST};dbname={$MYSQL_DB};charset=utf8mb4",
+        $MYSQL_USER,
+        $MYSQL_PASS,
+        [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ]
+    );
+} catch (Throwable $e) {
+    $pdo = null;
 }

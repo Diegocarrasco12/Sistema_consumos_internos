@@ -22,18 +22,28 @@
         }
 
         .scan-box button {
+            width: 100%;
             background: #0d6efd;
             color: #fff;
             border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 18px 20px;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: 600;
             cursor: pointer;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.35);
         }
 
         .scan-box button:active {
-            transform: scale(.98);
+            transform: scale(.97);
         }
+
 
         #qr-reader {
             margin: 15px auto 0;
@@ -88,6 +98,71 @@
             font-size: 13px;
             overflow-x: auto;
         }
+
+        /* =========================================================
+   FIX RESPONSIVE: achicar celdas del formulario "Datos del Registro"
+   (styles.css está metiendo height/padding grandes)
+========================================================= */
+        #formAltillo .form-group input,
+        #formAltillo .form-group select,
+        #formAltillo .form-group textarea {
+            box-sizing: border-box !important;
+            height: 38px !important;
+            /* <-- achica el "cuadro" */
+            padding: 6px 10px !important;
+            /* <-- menos padding */
+            font-size: 14px !important;
+            line-height: 1.2 !important;
+        }
+
+        /* textarea debe ser más alta que un input */
+        #formAltillo .form-group textarea {
+            height: auto !important;
+            min-height: 72px !important;
+            /* <-- controlado */
+            max-height: 110px !important;
+            resize: none !important;
+        }
+
+        /* opcional: labels un poco más compactas */
+        #formAltillo .form-group label {
+            margin-bottom: 3px !important;
+            font-size: 14px !important;
+        }
+
+        /* opcional: menos separación entre campos */
+        #formAltillo .form-group {
+            margin-bottom: 10px !important;
+        }
+
+        /* ====== Operador: dropdown seguro (no datalist) ====== */
+        .op-wrap {
+            position: relative;
+        }
+
+        .op-sugerencias {
+            position: absolute;
+            top: 42px;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            max-height: 220px;
+            overflow: auto;
+            z-index: 9999;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, .12);
+        }
+
+        .op-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .op-item:hover {
+            background: #f1f5ff;
+        }
     </style>
 
     <!-- Librería QR (CÁMARA TELÉFONO) -->
@@ -109,7 +184,7 @@
                 📷 Iniciar escaneo
             </button>
 
-            <div id="qr-reader" style="display:none; width:280px;"></div>
+            <div id="qr-reader" style="display:none; width:100%;"></div>
 
             <small style="display:block; margin-top:8px; color:#555;">
                 Use la cámara del teléfono para escanear la etiqueta
@@ -123,6 +198,9 @@
             <h3>Resultado QR</h3>
             <pre id="resultado">Esperando escaneo...</pre>
         </section>
+        <section class="result-box">
+            <div id="feedback"></div>
+        </section>
 
         <!-- ===============================
          FORMULARIO REGISTRO
@@ -135,13 +213,20 @@
                 <!-- Operador -->
                 <div class="form-group">
                     <label for="operador">Operador</label>
-                    <select id="operador" name="operador" required>
-                        <option value="">Seleccione operador</option>
-                        <!-- luego se llena dinámico -->
-                        <option value="juan.perez">Juan Pérez</option>
-                        <option value="maria.rojas">María Rojas</option>
-                        <option value="carlos.soto">Carlos Soto</option>
-                    </select>
+
+                    <div class="op-wrap">
+                        <input
+                            type="text"
+                            id="operador"
+                            name="operador"
+                            placeholder="Escriba operador (ej: jose)"
+                            autocomplete="off"
+                            required>
+
+                        <!-- acá aparecerán las sugerencias -->
+                        <div id="op-sugerencias" class="op-sugerencias" style="display:none;"></div>
+                    </div>
+
                 </div>
 
                 <!-- NP -->
@@ -158,7 +243,7 @@
 
                 <div class="form-group">
                     <label>Consumo calculado</label>
-                    <input type="text" id="consumo_unidades" readonly>
+                    <input type="hidden" id="consumo_unidades" name="consumo_unidades">
                 </div>
 
 
@@ -168,27 +253,11 @@
                  DATOS DESDE QR (READONLY)
             ================================ -->
 
-                <div class="form-group">
-                    <label>Código Producto</label>
-                    <input type="text" id="codigo_producto" readonly>
-                </div>
+                <input type="hidden" id="codigo_producto" name="codigo_producto">
+                <input type="hidden" id="descripcion_producto" name="descripcion_producto">
+                <input type="hidden" id="unidades_tarja" name="unidades_tarja">
+                <input type="hidden" id="lote" name="lote">
 
-                <div class="form-group">
-                    <label>Descripción Producto</label>
-                    <textarea id="descripcion_producto" rows="2" readonly></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Unidades Tarja</label>
-                    <input type="text" id="unidades_tarja" readonly>
-                </div>
-
-                <div class="form-group">
-                    <label>Lote</label>
-                    <input type="text" id="lote" readonly>
-                </div>
-
-                <!-- DocNum ELIMINADO (no se usa) -->
 
                 <button type="submit" class="btn-primary">
                     💾 Guardar Registro
@@ -201,6 +270,8 @@
 
     <!-- JS Altillo -->
     <script src="qr_scan_altillo.js"></script>
+    <script src="operadores.js"></script>
+
 
 </body>
 
