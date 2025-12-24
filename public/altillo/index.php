@@ -163,6 +163,28 @@
         .op-item:hover {
             background: #f1f5ff;
         }
+
+        /* ====== Botón listado (compacto y centrado) ====== */
+        .btn-listado {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px auto 0;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            background: #f1f3f5;
+            border: 1px solid #d0d4d9;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            max-width: fit-content;
+        }
+
+        .btn-listado:hover {
+            background: #e4e7eb;
+        }
     </style>
 
     <!-- Librería QR (CÁMARA TELÉFONO) -->
@@ -262,6 +284,12 @@
                 <button type="submit" class="btn-primary">
                     💾 Guardar Registro
                 </button>
+                <div style="text-align:center;">
+                    <a href="api/list_altillo.php" class="btn-listado">
+                        📋 Ver registros
+                    </a>
+                </div>
+
 
             </form>
         </section>

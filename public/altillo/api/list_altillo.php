@@ -121,8 +121,10 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <div class="mb-3">
             <a href="../index.php" class="btn btn-success">Nuevo Registro</a>
-            <a href="export_altillo_csv.php?<?= http_build_query($filters) ?>"
-                class="btn btn-outline-secondary ms-2">Exportar CSV</a>
+            <a href="export_excel.php?<?= http_build_query($filters) ?>"
+                class="btn btn-outline-secondary ms-2">
+                Exportar Excel
+            </a>
         </div>
 
 
