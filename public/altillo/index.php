@@ -285,7 +285,7 @@
                     💾 Guardar Registro
                 </button>
                 <div style="text-align:center;">
-                    <a href="api/list_altillo.php" class="btn-listado">
+                    <a href="list_altillo.php" class="btn-listado">
                         📋 Ver registros
                     </a>
                 </div>

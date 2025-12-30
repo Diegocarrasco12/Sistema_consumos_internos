@@ -1,49 +1,56 @@
 <?php
+
 declare(strict_types=1);
+
+ob_start();
+date_default_timezone_set('America/Santiago');
 
 require_once __DIR__ . '/../../../config/db.php';
 
 /* ===============================
-| Filtros (IGUALES al listado)
+| Filtros
 |=============================== */
 $filters = [
     'start_date' => $_GET['start_date'] ?? '',
-    'end_date'   => $_GET['end_date'] ?? '',
-    'codigo'     => $_GET['codigo'] ?? '',
-    'lote'       => $_GET['lote'] ?? '',
+    'end_date'   => $_GET['end_date']   ?? '',
+    'codigo'     => $_GET['codigo']     ?? '',
+    'lote'       => $_GET['lote']       ?? '',
 ];
 
 /* ===============================
-| WHERE dinámico
+| WHERE dinámico (MISMO PATRÓN list_altillo)
 |=============================== */
 $where  = [];
 $params = [];
 
-if ($filters['start_date']) {
-    $where[] = 'fecha >= :start_date';
-    $params[':start_date'] = $filters['start_date'];
+if ($filters['start_date'] !== '') {
+    $where[]  = 'DATE(created_at) >= ?';
+    $params[] = $filters['start_date'];
 }
-if ($filters['end_date']) {
-    $where[] = 'fecha <= :end_date';
-    $params[':end_date'] = $filters['end_date'];
+
+if ($filters['end_date'] !== '') {
+    $where[]  = 'DATE(created_at) <= ?';
+    $params[] = $filters['end_date'];
 }
-if ($filters['codigo']) {
-    $where[] = 'codigo LIKE :codigo';
-    $params[':codigo'] = '%' . $filters['codigo'] . '%';
+
+if ($filters['codigo'] !== '') {
+    $where[]  = 'codigo LIKE ?';
+    $params[] = '%' . $filters['codigo'] . '%';
 }
-if ($filters['lote']) {
-    $where[] = 'lote LIKE :lote';
-    $params[':lote'] = '%' . $filters['lote'] . '%';
+
+if ($filters['lote'] !== '') {
+    $where[]  = 'lote LIKE ?';
+    $params[] = '%' . $filters['lote'] . '%';
 }
 
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
 /* ===============================
-| Consulta (SIN paginación)
+| CONSULTA (MISMA DE SIEMPRE)
 |=============================== */
 $sql = "
     SELECT
-        fecha,
+        created_at,
         nombre,
         descripcion,
         codigo,
@@ -56,61 +63,75 @@ $sql = "
         estado
     FROM altillo_scan
     $whereSql
-    ORDER BY fecha DESC
+    ORDER BY created_at DESC
 ";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$rows = db_select($sql, $params);
 
 /* ===============================
-| HEADERS CORRECTOS PARA EXCEL
+| HEADERS CSV (Excel-safe)
 |=============================== */
+ob_clean();
+
 $filename = 'altillo_' . date('Ymd_His') . '.csv';
 
-header('Content-Type: text/csv; charset=UTF-8');
-header('Content-Disposition: attachment; filename=' . $filename);
+header('Content-Type: text/csv; charset=Windows-1252');
+header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-/* ===============================
-| SALIDA
-|=============================== */
-echo "\xEF\xBB\xBF";              // BOM UTF-8 (CLAVE)
 $out = fopen('php://output', 'w');
 
-fwrite($out, "sep=;\n");          // FORZAR separador en Excel (CLAVE)
+// Forzar separador en Excel
+fwrite($out, "sep=;\n");
 
 // Encabezados
 fputcsv($out, [
-    'Fecha',
+    'Fecha / Hora',
     'Nombre',
-    'Descripción',
-    'Código',
+    'Descripcion',
+    'Codigo',
     'Consumo',
     'NP',
-    'Unidades Tarja',
+    'Unid. Tarja',
     'Saldo',
     'Lote',
     'Comentario',
     'Estado'
 ], ';');
 
-// Datos
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+function excel_text($value): string
+{
+    if ($value === null) {
+        return '';
+    }
+
+    // Convertir de UTF-8 → Windows-1252 (Excel friendly)
+    return mb_convert_encoding((string)$value, 'Windows-1252', 'UTF-8');
+}
+
+/* ===============================
+| Datos
+|=============================== */
+foreach ($rows as $r) {
     fputcsv($out, [
-        $row['fecha'],
-        $row['nombre'],
-        $row['descripcion'],
-        $row['codigo'],
-        $row['consumo'],
-        $row['np'],
-        $row['unidades_tarja'],
-        $row['saldo'],
-        $row['lote'],
-        $row['comentario'],
-        $row['estado']
+        isset($r['created_at'])
+            ? date('d-m-Y H:i:s', strtotime((string)$r['created_at']))
+            : '',
+        excel_text($r['nombre'] ?? ''),
+        excel_text($r['descripcion'] ?? ''),
+        // Código como TEXTO para Excel
+        isset($r['codigo']) ? '="' . $r['codigo'] . '"' : '',
+        $r['consumo'] ?? '',
+        excel_text($r['np'] ?? ''),
+        $r['unidades_tarja'] ?? '',
+        $r['saldo'] ?? '',
+        excel_text($r['lote'] ?? ''),
+        excel_text($r['comentario'] ?? ''),
+        excel_text($r['estado'] ?? ''),
     ], ';');
 }
+
 
 fclose($out);
 exit;
